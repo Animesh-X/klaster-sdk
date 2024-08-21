@@ -1,0 +1,23 @@
+{
+  "name": "klaster-tutorial-repo",
+  "version": "1.0.0",
+  "description": "Tutorial repo for Klaster SDK, referenced in the Getting Started documentation at https://docs.klaster.io",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mislav Javor",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.4.1",
+    "tsx": "^4.17.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "axios": "^1.7.4",
+    "express": "^4.19.2",
+    "klaster-sdk": "^0.5.2",
+    "viem": "^2.19.8"
+  }
+}
