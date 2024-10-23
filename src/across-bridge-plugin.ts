@@ -10,11 +10,10 @@ async function getAcrossSuggestedFees(
   })
 
   const res = await client.get<RelayFeeResponse>(
-    `suggested-fees?inputToken=${data.sourceToken}&outputToken=${data.destinationToken}&
-    originChainId=${data.sourceChainId}&destinationChainId=${data.destinationChainId}&amount=${data.amount}`
+    `suggested-fees?inputToken=${data.sourceToken}&outputToken=${data.destinationToken}&originChainId=${data.sourceChainId}&destinationChainId=${data.destinationChainId}&amount=${data.amount}`
   )
-
-  return res.data
+  
+  return res.data;
 }
 
 function encodeAcrossCallData(data: BridgePluginParams, fees: RelayFeeResponse) {

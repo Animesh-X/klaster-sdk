@@ -1,17 +1,14 @@
 import { buildItx, buildMultichainReadonlyClient, buildRpcInfo, buildTokenMapping, deployment, encodeBridgingOps, getTokenAddressForChainId, initKlaster, klasterNodeHost, loadBicoV2Account, loadSafeV141Account, mcUSDC, MultichainClient, MultichainTokenMapping, rawTx, singleTx } from "klaster-sdk";
 import { createWalletClient, custom, encodeFunctionData, erc20Abi, http, parseUnits } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { arbitrum, base, baseSepolia, optimism, polygon, scroll, sepolia } from 'viem/chains'
+import { arbitrumSepolia, sepolia } from 'viem/chains'
 import { acrossBridgePlugin } from "./across-bridge-plugin";
 
 async function setUpKlaster() {
-  
-  const privateKey = generatePrivateKey();
-  const signerAccount = privateKeyToAccount(privateKey);
 
-  const signer = createWalletClient({
-    transport: http('https://test')
-  });
+  const privateKey = '0x301575511f576037a4a971741beeb2dc1045c13539f9206970f8d600db9835e1';
+  const signerAccount = privateKeyToAccount(privateKey);
+  const sourceAddress = '0xB3Ce5E1FCB9C5B94b44ed6e81a25FdD628d5d9DC';
 
   const klaster = await initKlaster({
     accountInitData: loadSafeV141Account({
@@ -22,16 +19,15 @@ async function setUpKlaster() {
     }),
     nodeUrl: klasterNodeHost.default,
   });
-  
 
   const mcClient = buildMultichainReadonlyClient(
-    [sepolia, baseSepolia].map(x => {
+    [sepolia, arbitrumSepolia].map(x => {
       return {
         chainId: x.id,
         rpcUrl: x.rpcUrls.default.http[0]
       }
     })
-  )
+  );
 
   // A lambda which intersects the chains available in the token mapping with the ones available 
   // in the multichain client
@@ -39,44 +35,66 @@ async function setUpKlaster() {
     return token.filter(deployment => mcClient.chainsRpcInfo.map(info => info.chainId).includes(deployment.chainId))
   }
 
-  const mUSDC = buildTokenMapping([
-    deployment(sepolia.id, '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'),
-    deployment(baseSepolia.id, '0x036CbD53842c5426634e7929541eC2318f3dCF7e')
-  ])
+  // Update LINK token addresses on Sepolia and Arbitrum Sepolia
+  const mLINK = buildTokenMapping([
+    deployment(sepolia.id, '0x779877A7B0D9E8603169DdbD7836e478b4624789'), // LINK on Sepolia
+    deployment(arbitrumSepolia.id, '0xb1D4538B4571d411F07960EF2838Ce337FE1E80E') // LINK on Arbitrum Sepolia
+  ]);
 
+  // Retrieve LINK balance
   const uBalance = await mcClient.getUnifiedErc20Balance({
-    tokenMapping: mUSDC,
+    tokenMapping: mLINK,
     account: klaster.account
-  })
+  });
 
-  const destinationChainId = baseSepolia.id
+  // console.log('Hello', uBalance);
+  
+
+  const destinationChainId = arbitrumSepolia.id;
+  const transferAmount = parseUnits("1", uBalance.decimals);
+
+  // Bridging operations for LINK transfer
+  // const bridgingOps = await encodeBridgingOps({
+  //   tokenMapping: mLINK,
+  //   account: klaster.account,
+  //   amount: parseUnits("1", uBalance.decimals), // Send 1 LINK token
+  //   bridgePlugin: acrossBridgePlugin,
+  //   client: mcClient,
+  //   destinationChainId: destinationChainId,
+  //   unifiedBalance: {
+  //     balance: parseUnits("3", 18),
+  //     decimals: 18, // assuming LINK has 18 decimals
+  //     breakdown: [
+  //       {
+  //         chainId: sepolia.id,
+  //         amount: parseUnits("2", 18)
+  //       },
+  //       {
+  //         chainId: arbitrumSepolia.id,
+  //         amount: parseUnits("1", 18)
+  //       }
+  //     ]
+  //   }
+  // });
+
 
   const bridgingOps = await encodeBridgingOps({
-    tokenMapping: mUSDC,
+    tokenMapping: mLINK,
     account: klaster.account,
-    amount: parseUnits("1", uBalance.decimals), // Don't send entire balance
+    amount: transferAmount,
     bridgePlugin: acrossBridgePlugin,
     client: mcClient,
-    destinationChainId: destinationChainId,
-    unifiedBalance: {
-      balance: parseUnits("3", 6),
-      decimals: 6,
-      breakdown: [
-        {
-          chainId: sepolia.id,
-          amount: parseUnits("0.5", 6)
-        }, 
-        {
-          chainId: baseSepolia.id,
-          amount: parseUnits("2", 6)
-        }
-      ]
-    }
-  })
+    destinationChainId,
+    unifiedBalance: uBalance
+  });
 
-  const recipient = '0x063B3184a74C510b5c6f5bBd122CC19689E0c706'
-  const destChainTokenAddress = getTokenAddressForChainId(mUSDC, destinationChainId)!
+  console.log('Hi',bridgingOps);
+  
 
+  const recipient = '0xB3Ce5E1FCB9C5B94b44ed6e81a25FdD628d5d9DC'; // Same recipient address on destination chain
+  const destChainTokenAddress = getTokenAddressForChainId(mLINK, destinationChainId)!;
+
+  // Create transaction to send LINK on the destination chain
   const sendERC20Op = rawTx({
     gasLimit: 100000n,
     to: destChainTokenAddress,
@@ -88,18 +106,27 @@ async function setUpKlaster() {
         bridgingOps.totalReceivedOnDestination
       ]
     })
-  })
+  });
 
   const iTx = buildItx({
     steps: bridgingOps.steps.concat(
       singleTx(destinationChainId, sendERC20Op)
     ),
     feeTx: klaster.encodePaymentFee(sepolia.id, 'ETH')
-  })
+  });
 
-  const quote = await klaster.getQuote(iTx)
+  const quote = await klaster.getQuote(iTx);
+
+  const signed = await signerAccount.signMessage({
+    message: {
+      raw: quote.itxHash
+    }
+  });
+
+  const result = await klaster.execute(quote, signed);
+
+  console.log(result.itxHash);
   
-  console.log(quote.itxHash)
 }
 
-setUpKlaster()
+setUpKlaster();
