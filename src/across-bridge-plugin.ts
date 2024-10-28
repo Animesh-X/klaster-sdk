@@ -6,7 +6,7 @@ async function getAcrossSuggestedFees(
   data: BridgePluginParams
 ) {
   const client = axios.create({
-    baseURL: 'https://app.across.to/api/'
+    baseURL: 'https://testnet.across.to/api/'
   })
 
   const res = await client.get<RelayFeeResponse>(
@@ -55,7 +55,7 @@ export const acrossBridgePlugin: BridgePlugin = async (data) => {
   // Approve sourceToken to the Across pool contract (for source chain)
   const acrossApproveTx = encodeApproveTx({
     tokenAddress: data.sourceToken,
-    amount: outputAmount,
+    amount: data.amount,
     recipient: feesResponse.spokePoolAddress
   })
 

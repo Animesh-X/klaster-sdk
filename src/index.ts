@@ -13,7 +13,7 @@ import {
 } from "klaster-sdk";
 import { createWalletClient, custom, encodeFunctionData, erc20Abi, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { sepolia, arbitrumSepolia } from "viem/chains";
+import { sepolia, arbitrumSepolia, baseSepolia } from "viem/chains";
 import { lifiBridgePlugin } from "./bridge-plugin";
 import { acrossBridgePlugin } from "./across-bridge-plugin";
 
@@ -21,6 +21,7 @@ async function setUpKlaster() {
     
     const privateKey = '0x301575511f576037a4a971741beeb2dc1045c13539f9206970f8d600db9835e1';
     const signerAccount = privateKeyToAccount(privateKey);
+    const destinationTokenAddress = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
 
     console.log(signerAccount);
 
@@ -46,14 +47,14 @@ async function setUpKlaster() {
 
     const mcClient = buildMultichainReadonlyClient([
         buildRpcInfo(sepolia.id, sepolia.rpcUrls.default.http[0]),
-        buildRpcInfo(arbitrumSepolia.id, arbitrumSepolia.rpcUrls.default.http[0])
+        buildRpcInfo(baseSepolia.id, baseSepolia.rpcUrls.default.http[0])
     ]);
 
     console.log("Multichain Client",mcClient);
 
     const mcUSDC = buildTokenMapping([
         deployment(sepolia.id, "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"),
-        deployment(arbitrumSepolia.id, "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d")
+        deployment(baseSepolia.id, "0x036CbD53842c5426634e7929541eC2318f3dCF7e")
     ]);
 
     console.log("Token mapping", mcUSDC);
@@ -66,47 +67,54 @@ async function setUpKlaster() {
       
     const uBalance = await mcClient.getUnifiedErc20Balance({
         tokenMapping: mcUSDC,
-        account: klaster.account
+        account: klaster.account,
     });
 
     console.log(uBalance);
+
+    // console.log(BigInt(3000000));
+    
     
 
-    const bridgeingOps = await encodeBridgingOps({
-        tokenMapping: mcUSDC,
-        account: klaster.account,
-        amount: uBalance.balance - BigInt(parseInt("2", uBalance.decimals)),
-        bridgePlugin: acrossBridgePlugin,
-        client: mcClient,
-        destinationChainId: arbitrumSepolia.id,
-        unifiedBalance: uBalance
-    });
+    // const bridgeingOps = await encodeBridgingOps({
+    //     tokenMapping: mcUSDC,
+    //     account: klaster.account,
+    //     // amount: uBalance.balance - BigInt(parseInt("3", uBalance.decimals)),
+    //     amount: BigInt(10000000),
+    //     bridgePlugin: acrossBridgePlugin,
+    //     client: mcClient,
+    //     destinationChainId: baseSepolia.id,
+    //     unifiedBalance: uBalance
+    // });
 
-    const sendERC20Op = rawTx({
-        gasLimit: 120000n,
-        to: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-        data: encodeFunctionData({
-            abi: erc20Abi,
-            functionName: "transfer",
-            args: [signerAccount.address, bridgeingOps.totalReceivedOnDestination]
-        })
-    });
+    // const sendERC20Op = rawTx({
+    //     gasLimit: 120000n,
+    //     to: destinationTokenAddress,
+    //     data: encodeFunctionData({
+    //         abi: erc20Abi,
+    //         functionName: "transfer",
+    //         args: [signerAccount.address, bridgeingOps.totalReceivedOnDestination]
+    //     })
+    // });
 
-    const itx = buildItx({
-        steps: bridgeingOps.steps.concat(singleTx(arbitrumSepolia.id, sendERC20Op)),
-        feeTx: klaster.encodePaymentFee(sepolia.id, "USDC"),
-    });
+    // const itx = buildItx({
+    //     steps: bridgeingOps.steps.concat(singleTx(baseSepolia.id, sendERC20Op)),
+    //     feeTx: klaster.encodePaymentFee(sepolia.id, "USDC"),
+    // });
 
-    const quote = await klaster.getQuote(itx);
-    const signed = await signerAccount.signMessage({
-        message: {
-            raw: quote.itxHash,
-        },
-    });
+    // const quote = await klaster.getQuote(itx);
+    // const signed = await signerAccount.signMessage({
+    //     message: {
+    //         raw: quote.itxHash,
+    //     },
+    // });
 
-    const result = await klaster.execute(quote, signed);
+    // console.log("Quote", quote);
+    
 
-    console.log(result.itxHash);
+    // const result = await klaster.execute(quote, signed);
+
+    // console.log(result.itxHash);
     
     
 }
