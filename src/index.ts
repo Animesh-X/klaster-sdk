@@ -76,45 +76,45 @@ async function setUpKlaster() {
     
     
 
-    // const bridgeingOps = await encodeBridgingOps({
-    //     tokenMapping: mcUSDC,
-    //     account: klaster.account,
-    //     // amount: uBalance.balance - BigInt(parseInt("3", uBalance.decimals)),
-    //     amount: BigInt(10000000),
-    //     bridgePlugin: acrossBridgePlugin,
-    //     client: mcClient,
-    //     destinationChainId: baseSepolia.id,
-    //     unifiedBalance: uBalance
-    // });
+    const bridgeingOps = await encodeBridgingOps({
+        tokenMapping: mcUSDC,
+        account: klaster.account,
+        // amount: uBalance.balance - BigInt(parseInt("3", uBalance.decimals)),
+        amount: BigInt(10000000),
+        bridgePlugin: acrossBridgePlugin,
+        client: mcClient,
+        destinationChainId: baseSepolia.id,
+        unifiedBalance: uBalance
+    });
 
-    // const sendERC20Op = rawTx({
-    //     gasLimit: 120000n,
-    //     to: destinationTokenAddress,
-    //     data: encodeFunctionData({
-    //         abi: erc20Abi,
-    //         functionName: "transfer",
-    //         args: [signerAccount.address, bridgeingOps.totalReceivedOnDestination]
-    //     })
-    // });
+    const sendERC20Op = rawTx({
+        gasLimit: 120000n,
+        to: destinationTokenAddress,
+        data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: "transfer",
+            args: [signerAccount.address, bridgeingOps.totalReceivedOnDestination]
+        })
+    });
 
-    // const itx = buildItx({
-    //     steps: bridgeingOps.steps.concat(singleTx(baseSepolia.id, sendERC20Op)),
-    //     feeTx: klaster.encodePaymentFee(sepolia.id, "USDC"),
-    // });
+    const itx = buildItx({
+        steps: bridgeingOps.steps.concat(singleTx(baseSepolia.id, sendERC20Op)),
+        feeTx: klaster.encodePaymentFee(sepolia.id, "USDC"),
+    });
 
-    // const quote = await klaster.getQuote(itx);
-    // const signed = await signerAccount.signMessage({
-    //     message: {
-    //         raw: quote.itxHash,
-    //     },
-    // });
+    const quote = await klaster.getQuote(itx);
+    const signed = await signerAccount.signMessage({
+        message: {
+            raw: quote.itxHash,
+        },
+    });
 
-    // console.log("Quote", quote);
+    console.log("Quote", quote);
     
 
-    // const result = await klaster.execute(quote, signed);
+    const result = await klaster.execute(quote, signed);
 
-    // console.log(result.itxHash);
+    console.log(result.itxHash);
     
     
 }
